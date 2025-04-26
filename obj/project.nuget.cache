@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "jlAUkuDnlypgMRysK7pGyNDTFYUTuLk4MCJSn6syP9XeWRfRtfVzEGTEMgxTzx/0wL3f76+sjuda9XfmFJAp1w==",
+  "success": true,
+  "projectFilePath": "/home/overlord/Documents/vs-repos/BulkLoader/Documents.csproj",
+  "expectedPackageFiles": [
+    "/home/overlord/.nuget/packages/csvhelper/33.0.1/csvhelper.33.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}
