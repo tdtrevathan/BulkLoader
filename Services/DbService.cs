@@ -3,9 +3,32 @@ using Microsoft.Data.Sqlite;
 
 public static class DbService
 {
-        static string connectionString = "Data Source=/Users/Tim/Documents/sqlLite/mock_orders.db";
-        static string buyerPath = "/Users/Tim/reposVSCode/BulkLoader/csv_files/buyers.csv";
-        static string productsPath = "/Users/Tim/reposVSCode/BulkLoader/csv_files/products.csv";
+        static string connectionString = $"Data Source={FilePaths.DatabasePath}";
+        static string buyerPath = FilePaths.BuyersPath;
+        static string productsPath = FilePaths.ProductsPath;
+
+        public static async Task InsertPuchaseOrders(List<PurchaseOrder> purchaseOrders)
+        {
+                using var connection = new SqliteConnection(connectionString);
+                await connection.OpenAsync();
+
+                foreach(var purchaseOrder in purchaseOrders)
+                {
+                        using var command = connection.CreateCommand();
+
+                        command.CommandText = $"Insert Into PurchaseOrderLines (BuyerId, OrderDate, ProductCode, Quantity) "
+                        + $" values('{purchaseOrder.BuyerId}', "
+                        + $"'{purchaseOrder.OrderDate}', "
+                        + $"'{purchaseOrder.ProductCode}', "
+                        + $"{purchaseOrder.Quantity})";
+
+                        await command.ExecuteScalarAsync();
+                        //Console.WriteLine(command.CommandText);
+                }
+
+
+                await connection.CloseAsync();
+        }
 
         public static async Task<HashSet<string>> GetHashSet(string table)
         {
@@ -24,6 +47,7 @@ public static class DbService
                         hashSet.Add(result);
                 }
 
+                await connection.CloseAsync();
                 return hashSet;
         }
 
@@ -46,5 +70,6 @@ public static class DbService
                         command.CommandText = $"INSERT INTO Product (ProductCode) values('{product.ProductCode}')";
                         await command.ExecuteScalarAsync();
                 }
+                await connection.CloseAsync();
         }
 }
