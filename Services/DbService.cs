@@ -12,22 +12,59 @@ public static class DbService
                 using var connection = new SqliteConnection(connectionString);
                 await connection.OpenAsync();
 
-                foreach(var purchaseOrder in purchaseOrders)
+                if (purchaseOrders.Count > 5000)
                 {
-                        using var command = connection.CreateCommand();
-
-                        command.CommandText = $"Insert Into PurchaseOrderLines (BuyerId, OrderDate, ProductCode, Quantity) "
-                        + $" values('{purchaseOrder.BuyerId}', "
-                        + $"'{purchaseOrder.OrderDate}', "
-                        + $"'{purchaseOrder.ProductCode}', "
-                        + $"{purchaseOrder.Quantity})";
-
-                        await command.ExecuteScalarAsync();
-                        //Console.WriteLine(command.CommandText);
+                        List<Task> insertTasks = new List<Task>();
+                        int batchSize = 5000;
+                        for (int i = 0; i < purchaseOrders.Count; i += batchSize)
+                        {
+                                List<PurchaseOrder> batch = purchaseOrders.GetRange(i, Math.Min(batchSize, purchaseOrders.Count - i));
+                                insertTasks.Add(InsertBatchAsync(connection, batch));
+                        }
+                        await Task.WhenAll(insertTasks);
+                }
+                else
+                {
+                        await InsertBatchAsync(connection, purchaseOrders);
                 }
 
-
                 await connection.CloseAsync();
+        }
+
+        private static async Task InsertBatchAsync(SqliteConnection connection, List<PurchaseOrder> batch)
+        {
+                if (batch == null || !batch.Any())
+                {
+                        return;
+                }
+
+                using var transaction = connection.BeginTransaction();
+                try
+                {
+                        var command = connection.CreateCommand();
+                        command.Transaction = transaction; // Associate command with the transaction
+
+                        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                        sb.Append("Insert Into PurchaseOrderLines (BuyerId, OrderDate, ProductCode, Quantity) VALUES ");
+
+                        for (int i = 0; i < batch.Count; i++)
+                        {
+                                var po = batch[i];
+                                sb.Append($"('{po.BuyerId}', '{po.OrderDate}', '{po.ProductCode}', {po.Quantity})");
+                                if (i < batch.Count - 1)
+                                {
+                                        sb.Append(", ");
+                                }
+                        }
+                        command.CommandText = sb.ToString();
+                        await command.ExecuteNonQueryAsync(); // Use ExecuteNonQueryAsync for INSERT operations
+                        await transaction.CommitAsync();
+                }
+                catch
+                {
+                        await transaction.RollbackAsync();
+                        throw; // Re-throw the exception to be caught by the caller
+                }
         }
 
         public static async Task<HashSet<string>> GetHashSet(string table)

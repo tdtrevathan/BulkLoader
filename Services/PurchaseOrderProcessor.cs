@@ -8,20 +8,29 @@ public static class PurchaseOrderProcessor
 
         var invalidRecords = new List<PurchaseOrder>();
         var validRecords = new List<PurchaseOrder>();
+        var processedProductCodes = new HashSet<string>();
 
         foreach (var record in records.SuccessfullRecords)
         {
-            var validation = await ValidationService.IsRecordValid(record);
-
-            if (validation.IsBuyerIdValid
-                && validation.IsProductCodeValid
-                && validation.IsQuantityValid)
+            if (processedProductCodes.Contains(record.ProductCode))
             {
-                validRecords.Add(record);
+                invalidRecords.Add(record); // Duplicate product code
             }
             else
             {
-                invalidRecords.Add(record);
+                var validation = await ValidationService.IsRecordValid(record);
+
+                if (validation.IsBuyerIdValid
+                    && validation.IsProductCodeValid
+                    && validation.IsQuantityValid)
+                {
+                    validRecords.Add(record);
+                    processedProductCodes.Add(record.ProductCode); // Add to set after successful validation
+                }
+                else
+                {
+                    invalidRecords.Add(record);
+                }
             }
         }
 
